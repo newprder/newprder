@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from 'react';
 import { AppBar, Box, Container, Toolbar, Typography } from '@mui/material';
 import SoundSequence from '../components/SoundSequence';
 
@@ -5,21 +6,54 @@ import SoundSequence from '../components/SoundSequence';
 // different runner; the page is a self-contained live tracker.
 const TRACKING_URL = 'https://raceday.me/v/4ac166';
 
-
 // Fractions of the tracker left visible after cropping: 26% is clipped from the
 // right, 15% from the top and 5% from the bottom. These proportions are what the
 // tracker was tuned to, and the same values apply at every size.
 const CROP = { visibleWidth: 0.74, visibleHeight: 0.8, fromTop: 0.15 };
 
-// Measured from the visible cropped box at the size the tracker lays out
-// correctly. Held constant on every device: the box scales, its shape does not.
-const ASPECT_RATIO = 1152 / 973;
+// The visible cropped box at the size the tracker lays out correctly. The
+// tracker is always rendered at exactly this size and then zoomed to fit, so it
+// never re-flows and the crop means the same thing on every device.
+const DESIGN_WIDTH = 1152;
+const DESIGN_HEIGHT = 973;
+const ASPECT_RATIO = DESIGN_WIDTH / DESIGN_HEIGHT;
 
 // Room taken by the app bar, page padding and the player bar. Subtracting it
 // lets the box cap its own width so its derived height still fits the screen.
 const CHROME_HEIGHT = 200;
 
+/**
+ * Tracks an element's width and returns the factor that maps `designWidth` onto
+ * it. CSS cannot express this: a scale factor is unitless, and CSS has no way to
+ * divide one length by another.
+ */
+function useZoomToFit(designWidth: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    const measure = (width: number) => setZoom(width / designWidth);
+
+    // Measured before the first paint, so the tracker never appears at full
+    // size and then snap-scales.
+    measure(element.getBoundingClientRect().width);
+
+    const observer = new ResizeObserver(([entry]) => {
+      measure(entry.contentRect.width);
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [designWidth]);
+
+  return { ref, zoom };
+}
+
 export default function HomePage() {
+  const { ref, zoom } = useZoomToFit(DESIGN_WIDTH);
+
   return (
     <>
       <AppBar position="static">
@@ -32,6 +66,7 @@ export default function HomePage() {
 
       <Container maxWidth="lg" sx={{ pt: 3 }}>
         <Box
+          ref={ref}
           sx={{
             position: 'relative',
             overflow: 'hidden',
@@ -51,22 +86,37 @@ export default function HomePage() {
             borderRadius: '10px',
           }}
         >
+          {/*
+            Fixed at the design size and zoomed as a whole. Sizing the iframe in
+            percentages instead would hand the tracker a different viewport at
+            every screen width, and a responsive page re-flows — which moves
+            whatever the crop was tuned to reveal.
+          */}
           <Box
-            component="iframe"
-            src={TRACKING_URL}
-            title="Raceday.me live tracking"
-            allowFullScreen
             sx={{
-              // Oversize the frame and let the wrapper clip the overflow.
-              // translateY is used rather than a negative margin because
-              // percentage margins resolve against width, not height.
-              display: 'block',
-              border: 0,
-              width: `calc(100% / ${CROP.visibleWidth})`,
-              height: `calc(100% / ${CROP.visibleHeight})`,
-              transform: `translateY(-${CROP.fromTop * 100}%)`,
+              width: DESIGN_WIDTH,
+              height: DESIGN_HEIGHT,
+              transform: `scale(${zoom})`,
+              transformOrigin: 'top left',
             }}
-          />
+          >
+            <Box
+              component="iframe"
+              src={TRACKING_URL}
+              title="Raceday.me live tracking"
+              allowFullScreen
+              sx={{
+                // Oversize the frame and let the wrapper clip the overflow.
+                // translateY is used rather than a negative margin because
+                // percentage margins resolve against width, not height.
+                display: 'block',
+                border: 0,
+                width: `calc(100% / ${CROP.visibleWidth})`,
+                height: `calc(100% / ${CROP.visibleHeight})`,
+                transform: `translateY(-${CROP.fromTop * 100}%)`,
+              }}
+            />
+          </Box>
 
           {/*
             The inversion is applied by this overlay rather than by a filter on
@@ -76,6 +126,9 @@ export default function HomePage() {
             cross-origin content because it operates on rendered pixels and never
             touches the frame's DOM. pointerEvents: none keeps the tracker
             clickable underneath.
+
+            It sits outside the zoomed element so its width stays a share of what
+            is actually visible, rather than being scaled along with the tracker.
           */}
           <Box
             sx={{
