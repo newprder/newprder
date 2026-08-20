@@ -3,10 +3,10 @@ import { Box, IconButton, Typography } from '@mui/material';
 import PauseRoundedIcon from '@mui/icons-material/PauseRounded';
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 
-// When the sequence begins: 11:07pm Pacific on 19 Aug 2026. The -07:00 offset
+// When the sequence begins: 11:53pm Pacific on 19 Aug 2026. The -07:00 offset
 // pins it to one instant, so every viewer hears it simultaneously regardless of
 // their own timezone.
-const START_TIME = '2026-08-19T23:07:00-07:00';
+const START_TIME = '2026-08-19T23:53:00-07:00';
 
 const BUCKET = 'new-prder.firebasestorage.app';
 
@@ -23,7 +23,7 @@ const TRACKS = [
   { title: 'Track 3', src: fileUrl('audio/03.mp3') },
 ];
 
-type Phase = 'idle' | 'loading' | 'armed' | 'playing' | 'done' | 'missed' | 'error';
+type Phase = 'idle' | 'loading' | 'armed' | 'playing' | 'error';
 
 /** Where the sequence stands `elapsed` ms after the start time. */
 type Position = { index: number; offset: number };
@@ -82,17 +82,21 @@ export default function SoundSequence() {
 
   /**
    * Walk the tracks accumulating durations to find which one covers `elapsed`.
-   * Returns null when the whole sequence has already finished.
+   * The sequence loops, so elapsed time wraps around the total: joining an hour
+   * late still lands at the right point in the current cycle.
    */
   const positionAt = useCallback(
-    (elapsed: number): Position | null => {
+    (elapsed: number): Position => {
       if (!durations) return { index: 0, offset: 0 };
-      let cursor = elapsed / 1000;
+      const total = durations.reduce((sum, d) => sum + d, 0);
+      if (total <= 0) return { index: 0, offset: 0 };
+
+      let cursor = (elapsed / 1000) % total;
       for (let i = 0; i < durations.length; i += 1) {
         if (cursor < durations[i]) return { index: i, offset: cursor };
         cursor -= durations[i];
       }
-      return null;
+      return { index: 0, offset: 0 };
     },
     [durations],
   );
@@ -124,10 +128,6 @@ export default function SoundSequence() {
       if (left > 0) return;
 
       const position = positionAt(-left);
-      if (!position) {
-        setPhase('missed');
-        return;
-      }
       pendingOffset.current = position.offset;
       setIndex(position.index);
       setPhase('playing');
@@ -159,17 +159,11 @@ export default function SoundSequence() {
     return () => audio.removeEventListener('loadedmetadata', onMeta);
   }, [phase, index]);
 
-  // One control for the whole lifecycle: arm before the start time, pause and
-  // resume during playback, replay once the sequence has finished.
+  // One control for the whole lifecycle: arm before the start time, then pause
+  // and resume during playback.
   const handleToggle = () => {
     if (phase === 'idle') {
       void arm();
-      return;
-    }
-    if (phase === 'done' || phase === 'missed') {
-      pendingOffset.current = 0;
-      setIndex(0);
-      setPhase('playing');
       return;
     }
     const audio = audioRef.current;
@@ -181,12 +175,9 @@ export default function SoundSequence() {
     }
   };
 
+  // Wraps back to the first track, so the sequence runs continuously.
   const handleEnded = () => {
-    if (index < TRACKS.length - 1) {
-      setIndex((i) => i + 1);
-    } else {
-      setPhase('done');
-    }
+    setIndex((i) => (i + 1) % TRACKS.length);
   };
 
   const status = (() => {
@@ -201,10 +192,6 @@ export default function SoundSequence() {
           : 'Armed — starting';
       case 'playing':
         return `Now playing — ${TRACKS[index].title}`;
-      case 'done':
-        return 'Sequence complete';
-      case 'missed':
-        return 'Sequence already finished';
       case 'error':
         return 'Could not load audio — check the files are uploaded';
     }
@@ -216,6 +203,8 @@ export default function SoundSequence() {
         mt: 1.5,
         px: { xs: 1.5, sm: 2 },
         py: 1.25,
+        // Twice the height it had when sized by the 56px button plus padding.
+        minHeight: 156,
         display: 'flex',
         alignItems: 'center',
         gap: { xs: 1, sm: 2 },
@@ -225,6 +214,28 @@ export default function SoundSequence() {
         bgcolor: 'grey.900',
       }}
     >
+      <IconButton
+        onClick={handleToggle}
+        disabled={phase === 'loading' || phase === 'armed' || phase === 'error'}
+        aria-label={isPaused ? 'Play' : 'Pause'}
+        sx={{
+          width: 112,
+          height: 112,
+          flexShrink: 0,
+          color: 'grey.200',
+          border: 1,
+          borderColor: 'grey.700',
+          '&:hover': { bgcolor: 'grey.800' },
+          '&.Mui-disabled': { color: 'grey.700', borderColor: 'grey.800' },
+        }}
+      >
+        {isPaused ? (
+          <PlayArrowRoundedIcon sx={{ fontSize: 68 }} />
+        ) : (
+          <PauseRoundedIcon sx={{ fontSize: 68 }} />
+        )}
+      </IconButton>
+
       <Typography
         sx={{
           flex: 1,
@@ -239,41 +250,19 @@ export default function SoundSequence() {
         {status}
       </Typography>
 
-      <Typography
-        sx={{
-          // Dropped on phones so the track title keeps the space instead.
-          display: { xs: 'none', sm: 'block' },
-          color: 'grey.500',
-          fontSize: 13,
-          flexShrink: 0,
-        }}
-      >
-        {phase === 'playing' || phase === 'done'
-          ? `${Math.min(index + 1, TRACKS.length)} / ${TRACKS.length}`
-          : `${TRACKS.length} tracks`}
-      </Typography>
-
-      <IconButton
-        onClick={handleToggle}
-        disabled={phase === 'loading' || phase === 'armed' || phase === 'error'}
-        aria-label={isPaused ? 'Play' : 'Pause'}
-        sx={{
-          width: 56,
-          height: 56,
-          flexShrink: 0,
-          color: 'grey.200',
-          border: 1,
-          borderColor: 'grey.700',
-          '&:hover': { bgcolor: 'grey.800' },
-          '&.Mui-disabled': { color: 'grey.700', borderColor: 'grey.800' },
-        }}
-      >
-        {isPaused ? (
-          <PlayArrowRoundedIcon sx={{ fontSize: 34 }} />
-        ) : (
-          <PauseRoundedIcon sx={{ fontSize: 34 }} />
-        )}
-      </IconButton>
+      {phase === 'playing' && (
+        <Typography
+          sx={{
+            // Dropped on phones so the track title keeps the space instead.
+            display: { xs: 'none', sm: 'block' },
+            color: 'grey.500',
+            fontSize: 13,
+            flexShrink: 0,
+          }}
+        >
+          {`${index + 1} / ${TRACKS.length}`}
+        </Typography>
+      )}
 
       <Box
         component="audio"
