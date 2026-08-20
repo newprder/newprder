@@ -5,6 +5,10 @@ import HomePage from './pages/HomePage';
 const theme = createTheme({
   palette: {
     primary: { main: '#1976d2' },
+    // CssBaseline paints the body from background.default. #1a1a1a is what the
+    // tracker's white background becomes under the overlay's
+    // invert(1) contrast(0.8), so the page and the filtered panel match.
+    background: { default: '#1a1a1a' },
   },
 });
 

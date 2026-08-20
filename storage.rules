@@ -1,0 +1,14 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Read-only, public app: anyone can play the audio, no one can upload from
+    // the client. Upload via the Firebase console, matching how `items` data is
+    // managed in Firestore.
+    match /audio/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

@@ -1,42 +1,11 @@
-import { useEffect, useState } from 'react';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
-import {
-  AppBar,
-  Alert,
-  Box,
-  CircularProgress,
-  Container,
-  List,
-  ListItem,
-  ListItemText,
-  Toolbar,
-  Typography,
-} from '@mui/material';
-import { db } from '../lib/firebase';
-import type { Item } from '../types';
+import { AppBar, Box, Container, Toolbar, Typography } from '@mui/material';
+import SoundSequence from '../components/SoundSequence';
+
+// Raceday.me viewer link embedded on the home page. Swap the code to follow a
+// different runner; the page is a self-contained live tracker.
+const TRACKING_URL = 'https://raceday.me/v/4ac166';
 
 export default function HomePage() {
-  const [items, setItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const q = query(collection(db, 'items'), orderBy('createdAt', 'desc'));
-        const snapshot = await getDocs(q);
-        setItems(
-          snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Item),
-        );
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load data.');
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, []);
-
   return (
     <>
       <AppBar position="static">
@@ -47,38 +16,64 @@ export default function HomePage() {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="md" sx={{ py: 4 }}>
-        {loading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-            <CircularProgress />
-          </Box>
-        )}
+      <Container maxWidth="lg" sx={{ pt: 3 }}>
+        <Box
+          sx={{
+            position: 'relative',
+            overflow: 'hidden',
+            height: { xs: '70vh', md: '78vh' },
+            minHeight: 420,
+            border: 1,
+            borderColor: 'grey.800',
+            // A bare number here would be multiplied by the theme's 4px unit,
+            // so 10px has to be given as a string.
+            borderRadius: '10px',
+          }}
+        >
+          <Box
+            component="iframe"
+            src={TRACKING_URL}
+            title="Raceday.me live tracking"
+            allowFullScreen
+            sx={{
+              // Render the tracker larger than its frame and let the wrapper clip
+              // the overflow: the rightmost 26%, the top 15% and the bottom 5%
+              // are cropped away, leaving 80% of the tracker's height visible.
+              // translateY is used rather than a negative margin because
+              // percentage margins resolve against width, not height.
+              display: 'block',
+              width: 'calc(100% / 0.74)',
+              height: 'calc(100% / 0.8)',
+              transform: 'translateY(-15%)',
+              border: 0,
+            }}
+          />
 
-        {error && (
-          <Alert severity="error" sx={{ my: 2 }}>
-            {error}
-          </Alert>
-        )}
+          {/*
+            The inversion is applied by this overlay rather than by a filter on
+            the iframe, because a filter always covers the whole element.
+            backdrop-filter acts on whatever is composited behind the overlay, so
+            limiting the overlay's width limits the effect. It works over
+            cross-origin content because it operates on rendered pixels and never
+            touches the frame's DOM. pointerEvents: none keeps the tracker
+            clickable underneath.
+          */}
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              width: '34.5%',
+              height: '100%',
+              zIndex: 1,
+              pointerEvents: 'none',
+              backdropFilter: 'invert(1) hue-rotate(180deg) contrast(0.8)',
+              WebkitBackdropFilter: 'invert(1) hue-rotate(180deg) contrast(0.8)',
+            }}
+          />
+        </Box>
 
-        {!loading && !error && items.length === 0 && (
-          <Typography sx={{ color: 'text.secondary', textAlign: 'center', py: 8 }}>
-            No items yet. Add documents to the <code>items</code> collection in
-            Firestore to see them here.
-          </Typography>
-        )}
-
-        {!loading && !error && items.length > 0 && (
-          <List>
-            {items.map((item) => (
-              <ListItem key={item.id} divider>
-                <ListItemText
-                  primary={item.title}
-                  secondary={item.description}
-                />
-              </ListItem>
-            ))}
-          </List>
-        )}
+        <SoundSequence />
       </Container>
     </>
   );
