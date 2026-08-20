@@ -1,0 +1,13 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Read-only, public app: anyone can read, no one can write from the client.
+    // Update data via the Firebase console or an admin/server script.
+    match /items/{itemId} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

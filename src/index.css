@@ -1,0 +1,4 @@
+/* Global resets beyond MUI CssBaseline */
+#root {
+  min-height: 100vh;
+}
