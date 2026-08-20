@@ -214,11 +214,11 @@ export default function SoundSequence() {
     <Box
       sx={{
         mt: 1.5,
-        px: 2,
+        px: { xs: 1.5, sm: 2 },
         py: 1.25,
         display: 'flex',
         alignItems: 'center',
-        gap: 2,
+        gap: { xs: 1, sm: 2 },
         border: 1,
         borderColor: 'grey.800',
         borderRadius: '10px',
@@ -239,7 +239,15 @@ export default function SoundSequence() {
         {status}
       </Typography>
 
-      <Typography sx={{ color: 'grey.500', fontSize: 13, flexShrink: 0 }}>
+      <Typography
+        sx={{
+          // Dropped on phones so the track title keeps the space instead.
+          display: { xs: 'none', sm: 'block' },
+          color: 'grey.500',
+          fontSize: 13,
+          flexShrink: 0,
+        }}
+      >
         {phase === 'playing' || phase === 'done'
           ? `${Math.min(index + 1, TRACKS.length)} / ${TRACKS.length}`
           : `${TRACKS.length} tracks`}
