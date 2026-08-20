@@ -5,6 +5,9 @@ import SoundSequence from '../components/SoundSequence';
 // different runner; the page is a self-contained live tracker.
 const TRACKING_URL = 'https://raceday.me/v/4ac166';
 
+// Shared by the embed and the player below it so the two stay the same width.
+const EMBED_WIDTH = '60%';
+
 export default function HomePage() {
   return (
     <>
@@ -21,8 +24,11 @@ export default function HomePage() {
           sx={{
             position: 'relative',
             overflow: 'hidden',
-            height: { xs: '70vh', md: '78vh' },
-            minHeight: 420,
+            // 60% of the previous size, in both dimensions.
+            width: EMBED_WIDTH,
+            mx: 'auto',
+            height: { xs: '42vh', md: '46.8vh' },
+            minHeight: 252,
             border: 1,
             borderColor: 'grey.800',
             // A bare number here would be multiplied by the theme's 4px unit,
@@ -30,24 +36,40 @@ export default function HomePage() {
             borderRadius: '10px',
           }}
         >
+          {/*
+            The stage lays the tracker out at the embed's original dimensions and
+            then scales the whole thing down, so the crop stays exactly
+            proportional. Shrinking the iframe directly would instead hand the
+            tracker a narrower viewport, and a responsive page re-flows at that
+            width — which would move whatever the crop was tuned to reveal.
+          */}
           <Box
-            component="iframe"
-            src={TRACKING_URL}
-            title="Raceday.me live tracking"
-            allowFullScreen
             sx={{
-              // Render the tracker larger than its frame and let the wrapper clip
-              // the overflow: the rightmost 26%, the top 15% and the bottom 5%
-              // are cropped away, leaving 80% of the tracker's height visible.
-              // translateY is used rather than a negative margin because
-              // percentage margins resolve against width, not height.
-              display: 'block',
-              width: 'calc(100% / 0.74)',
-              height: 'calc(100% / 0.8)',
-              transform: 'translateY(-15%)',
-              border: 0,
+              width: 'calc(100% / 0.6)',
+              height: 'calc(100% / 0.6)',
+              transform: 'scale(0.6)',
+              transformOrigin: 'top left',
             }}
-          />
+          >
+            <Box
+              component="iframe"
+              src={TRACKING_URL}
+              title="Raceday.me live tracking"
+              allowFullScreen
+              sx={{
+                // Render the tracker larger than its frame and let the wrapper
+                // clip the overflow: the rightmost 26%, the top 15% and the
+                // bottom 5% are cropped away, leaving 80% of the height visible.
+                // translateY is used rather than a negative margin because
+                // percentage margins resolve against width, not height.
+                display: 'block',
+                width: 'calc(100% / 0.74)',
+                height: 'calc(100% / 0.8)',
+                transform: 'translateY(-15%)',
+                border: 0,
+              }}
+            />
+          </Box>
 
           {/*
             The inversion is applied by this overlay rather than by a filter on
@@ -73,7 +95,9 @@ export default function HomePage() {
           />
         </Box>
 
-        <SoundSequence />
+        <Box sx={{ width: EMBED_WIDTH, mx: 'auto' }}>
+          <SoundSequence />
+        </Box>
       </Container>
     </>
   );
