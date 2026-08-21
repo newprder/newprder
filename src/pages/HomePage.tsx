@@ -39,9 +39,9 @@ const DESKTOP = {
 const MOBILE = {
   // Portrait, since the tracker's mobile layout stacks vertically.
   aspectRatio: 3 / 4,
-  // 14% clipped off the top and 45% off the bottom, leaving 41% of the
+  // 12% clipped off the top and 45% off the bottom, leaving 43% of the
   // tracker's height visible. Nothing off the sides.
-  crop: { visibleWidth: 1, visibleHeight: 0.41, fromTop: 0.14 },
+  crop: { visibleWidth: 1, visibleHeight: 0.43, fromTop: 0.12 },
   overlayWidth: null as string | null,
 };
 
