@@ -36,13 +36,19 @@ const TRACKS = [
 // Both controls are square. The art is the taller of the two, so with the bar's
 // 10px vertical padding and 1px border it is what sets the bar's height: 198 +
 // 22 gives a 220px bar.
-const BUTTON_SIZE = 96;
-const ART_SIZE = 120;
+const BUTTON_SIZE = { xs: 48, sm: 96 };
+const ART_SIZE = { xs: 60, sm: 120 };
+const ICON_SIZE = { xs: 30, sm: 59 };
 
 // The caption is positioned absolutely, so the row beneath it is padded by the
 // height it occupies. An explicit line height keeps the two in step.
-const CAPTION_SIZE = 18;
-const CAPTION_LINE_HEIGHT = 27;
+const CAPTION_SIZE = { xs: 12, sm: 18 };
+const CAPTION_LINE_HEIGHT = { xs: '14px', sm: '27px' };
+
+// Track title, artist line and the status line beneath them.
+const LINE_ONE_SIZE = { xs: 13, sm: 21 };
+const LINE_TWO_SIZE = { xs: 11, sm: 18 };
+const STATUS_SIZE = { xs: 10, sm: 14 };
 
 type Phase = 'idle' | 'loading' | 'armed' | 'playing' | 'error';
 
@@ -118,7 +124,7 @@ export default function SoundSequence() {
    */
   const positionAt = useCallback(
     (elapsed: number): Position => {
-      if (!durations) return { index: 0, offset: 0 };
+      if (!durations || elapsed < 0) return { index: 0, offset: 0 };
       const total = durations.reduce((sum, d) => sum + d, 0);
       if (total <= 0) return { index: 0, offset: 0 };
 
@@ -149,19 +155,24 @@ export default function SoundSequence() {
     }
   }, []);
 
-  // Tick while armed. Once the start time has passed, jump straight to whichever
-  // track is due and how far into it the sequence already is.
+  // Follows the schedule whenever the audio is not driving it, so the art and
+  // track text show what *would* be playing even before anyone arms the player.
+  // Once playing, the audio element takes over and this stands down.
   useEffect(() => {
-    if (phase !== 'armed') return;
+    if (phase === 'playing' || phase === 'loading' || phase === 'error') return;
+
     const tick = () => {
       const left = startAt - Date.now();
       setRemaining(left);
-      if (left > 0) return;
 
       const position = positionAt(-left);
-      pendingOffset.current = position.offset;
       setIndex(position.index);
-      setPhase('playing');
+
+      // Armed and the moment has arrived: hand over mid-track.
+      if (left <= 0 && phase === 'armed') {
+        pendingOffset.current = position.offset;
+        setPhase('playing');
+      }
     };
     tick();
     const id = window.setInterval(tick, 250);
@@ -211,12 +222,16 @@ export default function SoundSequence() {
     setIndex((i) => (i + 1) % TRACKS.length);
   };
 
+  // A third line under the track text. Empty when there is nothing to add, so
+  // the line disappears rather than leaving a gap.
   const status = (() => {
     switch (phase) {
       case 'loading':
         return 'Loading audio…';
       case 'idle':
-        return '';
+        return remaining !== null && remaining > 0
+          ? `Starts in ${formatCountdown(remaining)} — press play to listen along`
+          : 'Press play to listen along';
       case 'armed':
         return remaining !== null && remaining > 0
           ? `Armed — starts in ${formatCountdown(remaining)}`
@@ -244,8 +259,8 @@ export default function SoundSequence() {
     >
       <Box
         sx={{
-          px: { xs: 1.25, sm: 1.5 },
-          py: 0.75,
+          px: { xs: 1, sm: 1.5 },
+          py: { xs: 0.25, sm: 0.75 },
           borderBottom: 1,
           borderColor: 'grey.800',
           textAlign: 'center',
@@ -256,7 +271,7 @@ export default function SoundSequence() {
             fontStyle: 'italic',
             color: 'grey.500',
             fontSize: CAPTION_SIZE,
-            lineHeight: `${CAPTION_LINE_HEIGHT}px`,
+            lineHeight: CAPTION_LINE_HEIGHT,
           }}
         >
           {"What I'm listening to during my race right now"}
@@ -265,8 +280,8 @@ export default function SoundSequence() {
 
       <Box
         sx={{
-          px: { xs: 1.25, sm: 1.5 },
-          py: 1,
+          px: { xs: 1, sm: 1.5 },
+          py: { xs: 0.5, sm: 1 },
           display: 'flex',
           alignItems: 'center',
           gap: { xs: 1, sm: 2 },
@@ -290,9 +305,9 @@ export default function SoundSequence() {
           }}
         >
           {isPaused ? (
-            <PlayArrowRoundedIcon sx={{ fontSize: 59 }} />
+            <PlayArrowRoundedIcon sx={{ fontSize: ICON_SIZE }} />
           ) : (
-            <PauseRoundedIcon sx={{ fontSize: 59 }} />
+            <PauseRoundedIcon sx={{ fontSize: ICON_SIZE }} />
           )}
         </IconButton>
 
@@ -306,12 +321,24 @@ export default function SoundSequence() {
             gap: 0.25,
           }}
         >
-          {phase === 'playing' ? (
+          {phase === 'loading' || phase === 'error' ? (
+            <Typography
+              sx={{
+                color: phase === 'error' ? 'error.light' : 'grey.300',
+                fontSize: STATUS_SIZE,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {status}
+            </Typography>
+          ) : (
             <>
               <Typography
                 sx={{
                   color: 'grey.300',
-                  fontSize: 21,
+                  fontSize: LINE_ONE_SIZE,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
@@ -326,7 +353,7 @@ export default function SoundSequence() {
                 <Typography
                   sx={{
                     color: 'grey.400',
-                    fontSize: 18,
+                    fontSize: LINE_TWO_SIZE,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
@@ -335,19 +362,21 @@ export default function SoundSequence() {
                   {TRACKS[index].lineTwo}
                 </Typography>
               )}
+
+              {status && (
+                <Typography
+                  sx={{
+                    color: 'grey.500',
+                    fontSize: STATUS_SIZE,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {status}
+                </Typography>
+              )}
             </>
-          ) : (
-            <Typography
-              sx={{
-                color: phase === 'error' ? 'error.light' : 'grey.300',
-                fontSize: 14,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {status}
-            </Typography>
           )}
         </Box>
 
