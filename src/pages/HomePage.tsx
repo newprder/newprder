@@ -33,7 +33,6 @@ const DESKTOP = {
   designWidth: 1152,
   designHeight: 973,
   crop: { visibleWidth: 0.74, visibleHeight: 0.8, fromTop: 0.15 },
-  overlayWidth: '34.5%' as string | null,
 };
 
 const MOBILE = {
@@ -42,7 +41,6 @@ const MOBILE = {
   // 12% clipped off the top and 45% off the bottom, leaving 43% of the
   // tracker's height visible. Nothing off the sides.
   crop: { visibleWidth: 1, visibleHeight: 0.43, fromTop: 0.12 },
-  overlayWidth: null as string | null,
 };
 
 // Everything on the page sits at this share of the container: full bleed on
@@ -88,7 +86,7 @@ export default function HomePage() {
   const { ref, zoom } = useZoomToFit(DESKTOP.designWidth);
 
   const layout = isMobile ? MOBILE : DESKTOP;
-  const { crop, overlayWidth } = layout;
+  const { crop } = layout;
   const aspectRatio = isMobile
     ? MOBILE.aspectRatio
     : DESKTOP.designWidth / DESKTOP.designHeight;
@@ -186,35 +184,6 @@ export default function HomePage() {
                 sx={croppedFrame}
               />
             </Box>
-          )}
-
-          {/*
-            The inversion is applied by this overlay rather than by a filter on
-            the iframe, because a filter always covers the whole element.
-            backdrop-filter acts on whatever is composited behind the overlay, so
-            limiting the overlay's width limits the effect. It works over
-            cross-origin content because it operates on rendered pixels and never
-            touches the frame's DOM. pointerEvents: none keeps the tracker
-            clickable underneath.
-
-            It sits outside the zoomed element so its width stays a share of what
-            is actually visible, rather than being scaled along with the tracker.
-          */}
-          {overlayWidth && (
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 0,
-                right: 0,
-                width: overlayWidth,
-                height: '100%',
-                zIndex: 1,
-                pointerEvents: 'none',
-                backdropFilter: 'invert(1) hue-rotate(180deg) contrast(0.8)',
-                WebkitBackdropFilter:
-                  'invert(1) hue-rotate(180deg) contrast(0.8)',
-              }}
-            />
           )}
         </Box>
 

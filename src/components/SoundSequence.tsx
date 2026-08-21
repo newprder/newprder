@@ -36,19 +36,19 @@ const TRACKS = [
 // Both controls are square. The art is the taller of the two, so with the bar's
 // 10px vertical padding and 1px border it is what sets the bar's height: 198 +
 // 22 gives a 220px bar.
-const BUTTON_SIZE = { xs: 48, sm: 96 };
-const ART_SIZE = { xs: 60, sm: 120 };
-const ICON_SIZE = { xs: 30, sm: 59 };
+const BUTTON_SIZE = { xs: 58, sm: 96 };
+const ART_SIZE = { xs: 72, sm: 120 };
+const ICON_SIZE = { xs: 36, sm: 59 };
 
 // The caption is positioned absolutely, so the row beneath it is padded by the
 // height it occupies. An explicit line height keeps the two in step.
-const CAPTION_SIZE = { xs: 12, sm: 18 };
-const CAPTION_LINE_HEIGHT = { xs: '14px', sm: '27px' };
+const CAPTION_SIZE = { xs: 13, sm: 18 };
+const CAPTION_LINE_HEIGHT = { xs: '16px', sm: '27px' };
 
 // Track title, artist line and the status line beneath them.
-const LINE_ONE_SIZE = { xs: 13, sm: 21 };
-const LINE_TWO_SIZE = { xs: 11, sm: 18 };
-const STATUS_SIZE = { xs: 10, sm: 14 };
+const LINE_ONE_SIZE = { xs: 16, sm: 21 };
+const LINE_TWO_SIZE = { xs: 13, sm: 18 };
+const STATUS_SIZE = { xs: 12, sm: 14 };
 
 type Phase = 'idle' | 'loading' | 'armed' | 'playing' | 'error';
 
@@ -260,7 +260,7 @@ export default function SoundSequence() {
       <Box
         sx={{
           px: { xs: 1, sm: 1.5 },
-          py: { xs: 0.25, sm: 0.75 },
+          py: { xs: 0.5, sm: 0.75 },
           borderBottom: 1,
           borderColor: 'grey.800',
           textAlign: 'center',
@@ -274,14 +274,14 @@ export default function SoundSequence() {
             lineHeight: CAPTION_LINE_HEIGHT,
           }}
         >
-          {"What I'm listening to during my race right now"}
+          Listen along to my race playlist
         </Typography>
       </Box>
 
       <Box
         sx={{
           px: { xs: 1, sm: 1.5 },
-          py: { xs: 0.5, sm: 1 },
+          py: { xs: 0.75, sm: 1 },
           display: 'flex',
           alignItems: 'center',
           gap: { xs: 1, sm: 2 },

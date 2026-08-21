@@ -11,9 +11,9 @@ const theme = createTheme({
   },
   palette: {
     primary: { main: '#1976d2' },
-    // CssBaseline paints the body from background.default. #1a1a1a is what the
-    // tracker's white background becomes under the overlay's
-    // invert(1) contrast(0.8), so the page and the filtered panel match.
+    // CssBaseline paints the body from background.default. This value was
+    // originally chosen to match an inversion filter that has since been
+    // removed, so it is now just a dark grey.
     background: { default: '#1a1a1a' },
   },
 });
