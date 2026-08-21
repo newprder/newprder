@@ -10,11 +10,16 @@ const theme = createTheme({
     fontFamily: '"Courier Prime", "Courier New", Courier, monospace',
   },
   palette: {
-    primary: { main: '#1976d2' },
+    // Dark mode so MUI's own defaults — text, dividers, disabled states —
+    // resolve for a dark page instead of being overridden one at a time.
+    mode: 'dark',
+    // A near-white neutral rather than a hue: the page is monochrome, and the
+    // only things drawing on primary are focus rings and selection.
+    primary: { main: '#e0e0e0' },
     // CssBaseline paints the body from background.default. This value was
     // originally chosen to match an inversion filter that has since been
     // removed, so it is now just a dark grey.
-    background: { default: '#1a1a1a' },
+    background: { default: '#1a1a1a', paper: '#212121' },
   },
 });
 

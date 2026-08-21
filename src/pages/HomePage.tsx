@@ -109,7 +109,11 @@ export default function HomePage() {
         // elevation 0 removes the shadow, which would otherwise outline the bar
         // against a page it is meant to blend into.
         elevation={0}
-        sx={{ bgcolor: 'background.default', backgroundImage: 'none' }}
+        sx={{
+          bgcolor: 'background.default',
+          backgroundImage: 'none',
+          color: 'text.primary',
+        }}
       >
         <Toolbar
           sx={{
