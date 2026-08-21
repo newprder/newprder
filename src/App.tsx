@@ -3,6 +3,12 @@ import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import HomePage from './pages/HomePage';
 
 const theme = createTheme({
+  typography: {
+    // Courier New is the fallback because it is the one typewriter face present
+    // on most desktops; Android has no equivalent and would drop to its default
+    // monospace, so the webfont is what actually guarantees the look.
+    fontFamily: '"Courier Prime", "Courier New", Courier, monospace',
+  },
   palette: {
     primary: { main: '#1976d2' },
     // CssBaseline paints the body from background.default. #1a1a1a is what the

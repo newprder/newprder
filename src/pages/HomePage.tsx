@@ -1,22 +1,53 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { AppBar, Box, Container, Toolbar, Typography } from '@mui/material';
+import {
+  AppBar,
+  Box,
+  Container,
+  Toolbar,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
 import SoundSequence from '../components/SoundSequence';
 
 // Raceday.me viewer link embedded on the home page. Swap the code to follow a
 // different runner; the page is a self-contained live tracker.
 const TRACKING_URL = 'https://raceday.me/v/4ac166';
 
-// Fractions of the tracker left visible after cropping: 26% is clipped from the
-// right, 15% from the top and 5% from the bottom. These proportions are what the
-// tracker was tuned to, and the same values apply at every size.
-const CROP = { visibleWidth: 0.74, visibleHeight: 0.8, fromTop: 0.15 };
+/**
+ * The tracker is responsive, which gives us two ways to embed it, and each suits
+ * a different screen.
+ *
+ * On desktop it is rendered at a fixed design size and zoomed to fit, so its
+ * layout never re-flows and one set of crop values holds at every window size.
+ *
+ * On a phone that same approach shrinks a 1152px-wide layout into ~390px and the
+ * text becomes unreadable, so there the iframe is sized in percentages instead:
+ * the tracker receives the phone's own width and uses its native mobile layout
+ * at full size. That is a different layout, so it needs its own crop.
+ *
+ * `visibleWidth`/`visibleHeight` are the fractions left showing after cropping;
+ * `fromTop` is the fraction clipped off the top.
+ */
+const DESKTOP = {
+  designWidth: 1152,
+  designHeight: 973,
+  crop: { visibleWidth: 0.74, visibleHeight: 0.8, fromTop: 0.15 },
+  overlayWidth: '34.5%' as string | null,
+};
 
-// The visible cropped box at the size the tracker lays out correctly. The
-// tracker is always rendered at exactly this size and then zoomed to fit, so it
-// never re-flows and the crop means the same thing on every device.
-const DESIGN_WIDTH = 1152;
-const DESIGN_HEIGHT = 973;
-const ASPECT_RATIO = DESIGN_WIDTH / DESIGN_HEIGHT;
+const MOBILE = {
+  // Portrait, since the tracker's mobile layout stacks vertically.
+  aspectRatio: 3 / 4,
+  // 10% clipped off the top and 45% off the bottom, leaving 45% of the
+  // tracker's height visible. Nothing off the sides.
+  crop: { visibleWidth: 1, visibleHeight: 0.45, fromTop: 0.1 },
+  overlayWidth: null as string | null,
+};
+
+// Everything on the page sits at this share of the container: full bleed on
+// phones, where the space is needed, and inset on larger screens.
+const CONTENT_WIDTH = { xs: '100%', md: '80%' };
 
 // Room taken by the app bar, page padding and the player bar. Subtracting it
 // lets the box cap its own width so its derived height still fits the screen.
@@ -52,14 +83,47 @@ function useZoomToFit(designWidth: number) {
 }
 
 export default function HomePage() {
-  const { ref, zoom } = useZoomToFit(DESIGN_WIDTH);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { ref, zoom } = useZoomToFit(DESKTOP.designWidth);
+
+  const layout = isMobile ? MOBILE : DESKTOP;
+  const { crop, overlayWidth } = layout;
+  const aspectRatio = isMobile
+    ? MOBILE.aspectRatio
+    : DESKTOP.designWidth / DESKTOP.designHeight;
+
+  // Shared by both layouts: the iframe is oversized and the wrapper clips the
+  // overflow. translateY rather than a negative margin because percentage
+  // margins resolve against width, not height.
+  const croppedFrame = {
+    display: 'block',
+    border: 0,
+    width: `calc(100% / ${crop.visibleWidth})`,
+    height: `calc(100% / ${crop.visibleHeight})`,
+    transform: `translateY(-${crop.fromTop * 100}%)`,
+  };
 
   return (
     <>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component="h1" sx={{ fontWeight: 700 }}>
-            NewPRder
+      <AppBar
+        position="static"
+        // elevation 0 removes the shadow, which would otherwise outline the bar
+        // against a page it is meant to blend into.
+        elevation={0}
+        sx={{ bgcolor: 'background.default', backgroundImage: 'none' }}
+      >
+        <Toolbar sx={{ justifyContent: 'center' }}>
+          <Typography
+            variant="h4"
+            component="h1"
+            sx={{
+              fontWeight: 700,
+              textAlign: 'center',
+              textDecoration: 'underline',
+            }}
+          >
+            New PRder
           </Typography>
         </Toolbar>
       </AppBar>
@@ -70,15 +134,13 @@ export default function HomePage() {
           sx={{
             position: 'relative',
             overflow: 'hidden',
-            width: '100%',
+            width: CONTENT_WIDTH,
             // Never taller than the screen: capping the width caps the height
             // too, since the two are locked by the aspect ratio. dvh rather than
             // vh so mobile browser chrome does not shift it.
-            maxWidth: `calc((100dvh - ${CHROME_HEIGHT}px) * ${ASPECT_RATIO})`,
+            maxWidth: `calc((100dvh - ${CHROME_HEIGHT}px) * ${aspectRatio})`,
             mx: 'auto',
-            // Derives height from the width the element actually gets, so the
-            // shape holds on any screen.
-            aspectRatio: `${ASPECT_RATIO}`,
+            aspectRatio: `${aspectRatio}`,
             border: 1,
             borderColor: 'grey.800',
             // A bare number here would be multiplied by the theme's 4px unit,
@@ -86,37 +148,36 @@ export default function HomePage() {
             borderRadius: '10px',
           }}
         >
-          {/*
-            Fixed at the design size and zoomed as a whole. Sizing the iframe in
-            percentages instead would hand the tracker a different viewport at
-            every screen width, and a responsive page re-flows — which moves
-            whatever the crop was tuned to reveal.
-          */}
-          <Box
-            sx={{
-              width: DESIGN_WIDTH,
-              height: DESIGN_HEIGHT,
-              transform: `scale(${zoom})`,
-              transformOrigin: 'top left',
-            }}
-          >
+          {isMobile ? (
+            // Sized in percentages, so the tracker sees the phone's own width
+            // and lays itself out for it.
             <Box
               component="iframe"
               src={TRACKING_URL}
               title="Raceday.me live tracking"
               allowFullScreen
-              sx={{
-                // Oversize the frame and let the wrapper clip the overflow.
-                // translateY is used rather than a negative margin because
-                // percentage margins resolve against width, not height.
-                display: 'block',
-                border: 0,
-                width: `calc(100% / ${CROP.visibleWidth})`,
-                height: `calc(100% / ${CROP.visibleHeight})`,
-                transform: `translateY(-${CROP.fromTop * 100}%)`,
-              }}
+              sx={croppedFrame}
             />
-          </Box>
+          ) : (
+            // Fixed at the design size and zoomed as a whole, so the layout is
+            // identical at every desktop width.
+            <Box
+              sx={{
+                width: DESKTOP.designWidth,
+                height: DESKTOP.designHeight,
+                transform: `scale(${zoom})`,
+                transformOrigin: 'top left',
+              }}
+            >
+              <Box
+                component="iframe"
+                src={TRACKING_URL}
+                title="Raceday.me live tracking"
+                allowFullScreen
+                sx={croppedFrame}
+              />
+            </Box>
+          )}
 
           {/*
             The inversion is applied by this overlay rather than by a filter on
@@ -130,26 +191,29 @@ export default function HomePage() {
             It sits outside the zoomed element so its width stays a share of what
             is actually visible, rather than being scaled along with the tracker.
           */}
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 0,
-              right: 0,
-              width: '34.5%',
-              height: '100%',
-              zIndex: 1,
-              pointerEvents: 'none',
-              backdropFilter: 'invert(1) hue-rotate(180deg) contrast(0.8)',
-              WebkitBackdropFilter: 'invert(1) hue-rotate(180deg) contrast(0.8)',
-            }}
-          />
+          {overlayWidth && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                width: overlayWidth,
+                height: '100%',
+                zIndex: 1,
+                pointerEvents: 'none',
+                backdropFilter: 'invert(1) hue-rotate(180deg) contrast(0.8)',
+                WebkitBackdropFilter:
+                  'invert(1) hue-rotate(180deg) contrast(0.8)',
+              }}
+            />
+          )}
         </Box>
 
         <Box
           sx={{
-            width: '100%',
+            width: CONTENT_WIDTH,
             // Same cap as the embed, so the two stay the same width.
-            maxWidth: `calc((100dvh - ${CHROME_HEIGHT}px) * ${ASPECT_RATIO})`,
+            maxWidth: `calc((100dvh - ${CHROME_HEIGHT}px) * ${aspectRatio})`,
             mx: 'auto',
           }}
         >

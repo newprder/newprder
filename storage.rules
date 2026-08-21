@@ -10,5 +10,11 @@ service firebase.storage {
       allow read: if true;
       allow write: if false;
     }
+
+    // Cover art, one file per track, named to match the audio.
+    match /art/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
   }
 }

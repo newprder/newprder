@@ -16,12 +16,33 @@ const BUCKET = 'new-prder.firebasestorage.app';
 const fileUrl = (path: string) =>
   `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/${encodeURIComponent(path)}?alt=media`;
 
-// Played in order, back to back. Paths are relative to the bucket root.
+// Played in order, back to back, looping. `lineOne` renders bold, `lineTwo`
+// regular; leave `lineTwo` empty to show only the first line. Audio and cover
+// art share a file number, so both URLs derive from `id`.
 const TRACKS = [
-  { title: 'Track 1', src: fileUrl('audio/01.mp3') },
-  { title: 'Track 2', src: fileUrl('audio/02.mp3') },
-  { title: 'Track 3', src: fileUrl('audio/03.mp3') },
-];
+  {
+    id: '01',
+    lineOne: 'The Dripping Tap',
+    lineTwo: 'King Gizzard & The Lizard Wizard',
+  },
+  { id: '02', lineOne: 'Dot in the Sky', lineTwo: 'Drab Majesty' },
+  { id: '03', lineOne: 'Void To Be', lineTwo: 'Blackwater Holylight' },
+].map((track) => ({
+  ...track,
+  src: fileUrl(`audio/${track.id}.mp3`),
+  art: fileUrl(`art/${track.id}.jpg`),
+}));
+
+// Both controls are square. The art is the taller of the two, so with the bar's
+// 10px vertical padding and 1px border it is what sets the bar's height: 198 +
+// 22 gives a 220px bar.
+const BUTTON_SIZE = 96;
+const ART_SIZE = 120;
+
+// The caption is positioned absolutely, so the row beneath it is padded by the
+// height it occupies. An explicit line height keeps the two in step.
+const CAPTION_SIZE = 18;
+const CAPTION_LINE_HEIGHT = 27;
 
 type Phase = 'idle' | 'loading' | 'armed' | 'playing' | 'error';
 
@@ -44,7 +65,9 @@ function probeDuration(src: string) {
     probe.addEventListener('loadedmetadata', () => resolve(probe.duration), {
       once: true,
     });
-    probe.addEventListener('error', () => reject(new Error(src)), { once: true });
+    probe.addEventListener('error', () => reject(new Error(src)), {
+      once: true,
+    });
     probe.src = src;
   });
 }
@@ -78,6 +101,14 @@ export default function SoundSequence() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // Fetched ahead of time so a track change swaps the art instantly.
+  useEffect(() => {
+    TRACKS.forEach((track) => {
+      const image = new Image();
+      image.src = track.art;
+    });
   }, []);
 
   /**
@@ -191,7 +222,7 @@ export default function SoundSequence() {
           ? `Armed — starts in ${formatCountdown(remaining)}`
           : 'Armed — starting';
       case 'playing':
-        return `Now playing — ${TRACKS[index].title}`;
+        return '';
       case 'error':
         return 'Could not load audio — check the files are uploaded';
     }
@@ -201,68 +232,143 @@ export default function SoundSequence() {
     <Box
       sx={{
         mt: 1.5,
-        px: { xs: 1.5, sm: 2 },
-        py: 1.25,
-        // Twice the height it had when sized by the 56px button plus padding.
-        minHeight: 156,
         display: 'flex',
-        alignItems: 'center',
-        gap: { xs: 1, sm: 2 },
+        flexDirection: 'column',
         border: 1,
         borderColor: 'grey.800',
         borderRadius: '10px',
         bgcolor: 'grey.900',
+        // Clips the title bar's square corners to the rounded outer shape.
+        overflow: 'hidden',
       }}
     >
-      <IconButton
-        onClick={handleToggle}
-        disabled={phase === 'loading' || phase === 'armed' || phase === 'error'}
-        aria-label={isPaused ? 'Play' : 'Pause'}
+      <Box
         sx={{
-          width: 112,
-          height: 112,
-          flexShrink: 0,
-          color: 'grey.200',
-          border: 1,
-          borderColor: 'grey.700',
-          '&:hover': { bgcolor: 'grey.800' },
-          '&.Mui-disabled': { color: 'grey.700', borderColor: 'grey.800' },
+          px: { xs: 1.25, sm: 1.5 },
+          py: 0.75,
+          borderBottom: 1,
+          borderColor: 'grey.800',
+          textAlign: 'center',
         }}
       >
-        {isPaused ? (
-          <PlayArrowRoundedIcon sx={{ fontSize: 68 }} />
-        ) : (
-          <PauseRoundedIcon sx={{ fontSize: 68 }} />
-        )}
-      </IconButton>
-
-      <Typography
-        sx={{
-          flex: 1,
-          minWidth: 0,
-          color: phase === 'error' ? 'error.light' : 'grey.300',
-          fontSize: 14,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {status}
-      </Typography>
-
-      {phase === 'playing' && (
         <Typography
           sx={{
-            // Dropped on phones so the track title keeps the space instead.
-            display: { xs: 'none', sm: 'block' },
+            fontStyle: 'italic',
             color: 'grey.500',
-            fontSize: 13,
-            flexShrink: 0,
+            fontSize: CAPTION_SIZE,
+            lineHeight: `${CAPTION_LINE_HEIGHT}px`,
           }}
         >
-          {`${index + 1} / ${TRACKS.length}`}
+          {"What I'm listening to during my race right now"}
         </Typography>
-      )}
+      </Box>
+
+      <Box
+        sx={{
+          px: { xs: 1.25, sm: 1.5 },
+          py: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: { xs: 1, sm: 2 },
+        }}
+      >
+        <IconButton
+          onClick={handleToggle}
+          disabled={
+            phase === 'loading' || phase === 'armed' || phase === 'error'
+          }
+          aria-label={isPaused ? 'Play' : 'Pause'}
+          sx={{
+            width: BUTTON_SIZE,
+            height: BUTTON_SIZE,
+            flexShrink: 0,
+            color: 'grey.200',
+            border: 1,
+            borderColor: 'grey.700',
+            '&:hover': { bgcolor: 'grey.800' },
+            '&.Mui-disabled': { color: 'grey.700', borderColor: 'grey.800' },
+          }}
+        >
+          {isPaused ? (
+            <PlayArrowRoundedIcon sx={{ fontSize: 59 }} />
+          ) : (
+            <PauseRoundedIcon sx={{ fontSize: 59 }} />
+          )}
+        </IconButton>
+
+        <Box
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            gap: 0.25,
+          }}
+        >
+          {phase === 'playing' ? (
+            <>
+              <Typography
+                sx={{
+                  color: 'grey.300',
+                  fontSize: 21,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <Box component="span" sx={{ fontWeight: 700 }}>
+                  {TRACKS[index].lineOne}
+                </Box>
+              </Typography>
+
+              {TRACKS[index].lineTwo && (
+                <Typography
+                  sx={{
+                    color: 'grey.400',
+                    fontSize: 18,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {TRACKS[index].lineTwo}
+                </Typography>
+              )}
+            </>
+          ) : (
+            <Typography
+              sx={{
+                color: phase === 'error' ? 'error.light' : 'grey.300',
+                fontSize: 14,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {status}
+            </Typography>
+          )}
+        </Box>
+
+        <Box
+          component="img"
+          src={TRACKS[index].art}
+          alt={`${TRACKS[index].lineOne} cover art`}
+          sx={{
+            // An explicit square. Sizing this by stretch instead lets the flex
+            // algorithm start from the image's intrinsic width — over 1000px —
+            // which flexShrink: 0 then refuses to reduce.
+            width: ART_SIZE,
+            height: ART_SIZE,
+            flexShrink: 0,
+            borderRadius: '10px',
+            // Crops to the square rather than distorting a non-square source.
+            objectFit: 'cover',
+            bgcolor: 'grey.800',
+          }}
+        />
+      </Box>
 
       <Box
         component="audio"
