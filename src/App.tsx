@@ -22,7 +22,7 @@ export default function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <BrowserRouter basename="/newprder">
+      <BrowserRouter>
         <Routes>
           <Route path="/" element={<HomePage />} />
         </Routes>
