@@ -113,7 +113,16 @@ export default function HomePage() {
         elevation={0}
         sx={{ bgcolor: 'background.default', backgroundImage: 'none' }}
       >
-        <Toolbar sx={{ justifyContent: 'center' }}>
+        <Toolbar
+          sx={{
+            justifyContent: 'center',
+            // MUI's default 56/64px toolbar leaves the title floating in
+            // empty space above the embed. The media query is needed because
+            // the default itself is set through one.
+            minHeight: 48,
+            '@media (min-width:600px)': { minHeight: 48 },
+          }}
+        >
           <Typography
             variant="h4"
             component="h1"
@@ -128,7 +137,7 @@ export default function HomePage() {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="lg" sx={{ pt: 3 }}>
+      <Container maxWidth="lg" sx={{ pt: 0 }}>
         <Box
           ref={ref}
           sx={{
