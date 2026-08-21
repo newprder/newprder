@@ -50,6 +50,10 @@ const LINE_ONE_SIZE = { xs: 16, sm: 21 };
 const LINE_TWO_SIZE = { xs: 13, sm: 18 };
 const STATUS_SIZE = { xs: 12, sm: 14 };
 
+// Temporarily presentational: the player still follows the schedule and shows
+// the current track, but cannot be played. Set to true to restore interaction.
+const INTERACTIVE = false;
+
 type Phase = 'idle' | 'loading' | 'armed' | 'playing' | 'error';
 
 /** Where the sequence stands `elapsed` ms after the start time. */
@@ -247,6 +251,10 @@ export default function SoundSequence() {
     <Box
       sx={{
         mt: 1.5,
+        // Dimmed and inert while INTERACTIVE is false. pointerEvents also stops
+        // hover states firing, which would otherwise imply it is clickable.
+        opacity: INTERACTIVE ? 1 : 0.2,
+        pointerEvents: INTERACTIVE ? 'auto' : 'none',
         display: 'flex',
         flexDirection: 'column',
         border: 1,
@@ -289,8 +297,13 @@ export default function SoundSequence() {
       >
         <IconButton
           onClick={handleToggle}
+          // Disabled as well as inert, so it is skipped by keyboard focus
+          // rather than merely unresponsive to clicks.
           disabled={
-            phase === 'loading' || phase === 'armed' || phase === 'error'
+            !INTERACTIVE ||
+            phase === 'loading' ||
+            phase === 'armed' ||
+            phase === 'error'
           }
           aria-label={isPaused ? 'Play' : 'Pause'}
           sx={{
